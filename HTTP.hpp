@@ -6,7 +6,7 @@
 #include <vector>
 
 // networking libraries
-#include <Windows.h>
+#include <windows.h>
 #include <wininet.h>
 #pragma comment(lib, "wininet.lib")
 
@@ -19,7 +19,6 @@ namespace HTTP
     extern std::string userAgent;
     extern INTERNET_PORT port;
     extern DWORD requestFlags;
-    extern std::vector<std::string> acceptableContentTypes;
 
     /*
         A post function used when the response is known,
@@ -182,5 +181,5 @@ namespace HTTP
     /*
         a universal post function that works with strings
     */
-    extern bool Post(std::string URL, std::string input, std::string* output);
+    extern bool Post(std::string URL, std::string input, std::string& output);
 };

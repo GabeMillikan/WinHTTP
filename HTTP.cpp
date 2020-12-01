@@ -6,16 +6,12 @@ namespace HTTP
     std::string userAgent = "WinHTTP/1.0";
     INTERNET_PORT port = INTERNET_DEFAULT_HTTPS_PORT; // 443
     DWORD requestFlags = INTERNET_FLAG_SECURE | defaultNoCacheFlags | defaultBaseFlags;
-    std::vector<std::string> acceptableContentTypes{ "application/octet-stream", "text/plain" };
 
-
-    bool Post(std::string URL, std::string input, std::string* output)
+    bool Post(std::string URL, std::string input, std::string& output)
     {
         if (debug)
         {
             std::cout << "HTTP::Post to url " << URL << std::endl;
-            if (!output)
-                std::cout << "(ignoring any response)" << std::endl;
         }
 
 
@@ -76,27 +72,15 @@ namespace HTTP
             return false;
         }
 
-        // Long pointer to a null-terminated array of string pointers indicating content types accepted by the client
-        /*size_t numTypes = 1;
-        size_t arrayLength = numTypes + 1;
-        LPCSTR* arrayOfContentTypes = (LPCSTR*)malloc(sizeof(LPCSTR) * arrayLength);
-        if (!arrayOfContentTypes)
-        {
-            if (debug)
-                std::cout << "failed to allocate memory for content type array" << std::endl;
-            return false;
-        }
-        arrayOfContentTypes[0] = "hello";
-        */
-
-        LPCSTR bruh[]{"text/plain", 0};
+        // "Long pointer to a null-terminated array of string pointers indicating content types accepted by the client"
+        LPCSTR acceptContentTypes[]{ "*/*", 0};
 
         HINTERNET hRequest = HttpOpenRequest(hConnection,
             "POST",
             directory.c_str(),
             "HTTP/1.1",
             0,
-            bruh,
+            acceptContentTypes,
             requestFlags,
             0
         );
@@ -107,7 +91,14 @@ namespace HTTP
             return false;
         }
 
-        bool requestSuccess = HttpSendRequestA(hRequest,
+        bool headersAdded = HttpAddRequestHeaders(
+            hRequest,
+            "Content-Type: application/x-www-form-urlencoded",
+            48,
+            HTTP_ADDREQ_FLAG_REPLACE
+        );
+
+        bool requestSuccess = HttpSendRequest(hRequest,
             // headers and length, not supported yet
             NULL, 0,
             // post data and post length
@@ -125,12 +116,10 @@ namespace HTTP
         if (!requestSuccess)
             return false;
 
-        if (!output)
-            return true;
-
+        // read response
         DWORD bytesRead = 0;
         size_t totalBytesRead = 0;
-        char* buffer = (char*)malloc(267); // read 256 chars at a time
+        char* buffer = (char*)malloc(257); // read 256 chars at a time
         if (!buffer)
         {
             if (debug)
@@ -138,12 +127,9 @@ namespace HTTP
             return false;
         }
         do {
-            if (buffer[0])
-                for (int i = 0; i < 257; i++)
-                    buffer[i] = NULL;
-
             InternetReadFile(hRequest, buffer, 256, &bytesRead);
-            *output += buffer;
+            buffer[bytesRead] = NULL;
+            output += buffer;
             totalBytesRead += bytesRead;
         } while (bytesRead > 0);
 
