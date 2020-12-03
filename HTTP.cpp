@@ -6,6 +6,7 @@ namespace HTTP
     std::string userAgent = "WinHTTP/1.0";
     INTERNET_PORT port = INTERNET_DEFAULT_HTTPS_PORT; // 443
     DWORD requestFlags = INTERNET_FLAG_SECURE | defaultNoCacheFlags | defaultBaseFlags;
+    std::string contentType = "application/x-www-form-urlencoded";
 
     bool Post(std::string URL, std::string input, std::string& output)
     {
@@ -73,7 +74,7 @@ namespace HTTP
         }
 
         // "Long pointer to a null-terminated array of string pointers indicating content types accepted by the client"
-        LPCSTR acceptContentTypes[]{ "*/*", 0};
+        LPCSTR acceptContentTypes[]{ "*/*", 0 };
 
         HINTERNET hRequest = HttpOpenRequest(hConnection,
             "POST",
@@ -93,7 +94,7 @@ namespace HTTP
 
         bool headersAdded = HttpAddRequestHeaders(
             hRequest,
-            "Content-Type: application/x-www-form-urlencoded",
+            ("Content-Type: " + contentType + "\r\n").c_str(),
             48,
             HTTP_ADDREQ_FLAG_REPLACE
         );
@@ -102,7 +103,7 @@ namespace HTTP
             // headers and length, not supported yet
             NULL, 0,
             // post data and post length
-            (void*)input.c_str(), input.size() + 1 // +1 for null terminator
+            (void*)input.c_str(), input.size()
         );
 
         if (debug)
