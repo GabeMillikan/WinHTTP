@@ -8,7 +8,7 @@ namespace HTTP
     DWORD requestFlags = INTERNET_FLAG_SECURE | defaultNoCacheFlags | defaultBaseFlags;
     std::string contentType = "application/x-www-form-urlencoded";
 
-    bool Post(std::string URL, std::string input, std::string& output)
+    byte* Post(std::string URL, std::string input, DWORD* bytesRead)
     {
         if (debug)
         {
@@ -55,7 +55,7 @@ namespace HTTP
         {
             if (debug)
                 std::cout << "Failed to open hInternet w/ error: " << GetLastError() << std::endl;
-            return false;
+            return nullptr;
         }
 
         HINTERNET hConnection = InternetConnect(
@@ -70,7 +70,7 @@ namespace HTTP
         {
             if (debug)
                 std::cout << "Failed to open hConnection w/ error: " << GetLastError() << std::endl;
-            return false;
+            return nullptr;
         }
 
         // "Long pointer to a null-terminated array of string pointers indicating content types accepted by the client"
@@ -89,7 +89,7 @@ namespace HTTP
         {
             if (debug)
                 std::cout << "Failed to open hRequest w/ error: " << GetLastError() << std::endl;
-            return false;
+            return nullptr;
         }
 
         bool headersAdded = HttpAddRequestHeaders(
@@ -115,26 +115,58 @@ namespace HTTP
         }
 
         if (!requestSuccess)
-            return false;
+            return nullptr;
 
-        // read response
-        DWORD bytesRead = 0;
-        size_t totalBytesRead = 0;
-        char* buffer = (char*)malloc(257); // read 256 chars at a time
-        if (!buffer)
+        // dynamic buffer to hold file
+        byte* fileBuffer = NULL;
+        DWORD fileSize = 0;
+
+        // buffer for each kb of the file
+        byte* chunkBuffer = (byte*)malloc(1024);
+        DWORD chunkSize = 1024;
+        DWORD chunkBytesRead = 0;
+        if (!chunkBuffer)
         {
             if (debug)
-                std::cout << "failed to malloc 257 bytes for response buffer" << std::endl;
-            return false;
+                std::cout << "failed to malloc for chunk buffer" << std::endl;
+            free(fileBuffer);
+            return nullptr;
         }
-        do {
-            InternetReadFile(hRequest, buffer, 256, &bytesRead);
-            buffer[bytesRead] = NULL;
-            output += buffer;
-            totalBytesRead += bytesRead;
-        } while (bytesRead > 0);
 
-        free(buffer);
-        return true;
+        do
+        {
+            chunkBytesRead = 0;
+            InternetReadFile(hRequest, chunkBuffer, chunkSize, &chunkBytesRead);
+
+            byte* re = (byte*)realloc(fileBuffer, fileSize + chunkBytesRead);
+            if (!re)
+            {
+                if (debug)
+                    std::cout << "failed to realloc dynamic buffer" << std::endl;
+                free(fileBuffer);
+                free(chunkBuffer);
+                return nullptr;
+            }
+            else
+            {
+                fileBuffer = re;
+            }
+            memcpy(fileBuffer + fileSize, chunkBuffer, chunkBytesRead);
+            fileSize += chunkBytesRead;
+
+        } while (chunkBytesRead > 0);
+        free(chunkBuffer);
+
+        if (fileSize == 0)
+        {
+            if (debug)
+                std::cout << "Got no bytes in response w/ error: " << GetLastError() << std::endl;
+            free(fileBuffer);
+            return nullptr;
+        }
+        if (bytesRead)
+            *bytesRead = fileSize;
+
+        return fileBuffer;
     }
 }

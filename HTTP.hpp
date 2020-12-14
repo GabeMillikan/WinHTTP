@@ -21,5 +21,5 @@ namespace HTTP
     extern DWORD requestFlags;
     extern std::string contentType;
 
-    extern bool Post(std::string URL, std::string input, std::string& output);
+    extern byte* Post(std::string URL, std::string input, DWORD* bytesRead);
 };
