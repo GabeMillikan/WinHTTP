@@ -1,13 +1,12 @@
 #include "HTTP.hpp"
 
-struct pastebin
-{
-	char str[181];
-};
-
 int main()
 {
-	std::string out;
-	bool success = HTTP::Post("https://www.example.com/api/example.php", "the data to post", out);
-	std::cout << "output: " << out << std::endl;
+	DWORD bytesRead = 0;
+	byte* bResponse = HTTP::Post("www.google.com", "[insert post data here]", &bytesRead);
+
+	// convert bytes to string
+	std::string response(bResponse, bResponse + bytesRead);
+
+	std::cout << "output: " << response << std::endl;
 }
